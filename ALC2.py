@@ -444,9 +444,15 @@ def normaMatMC(A, q, p, Np):
     n = A.shape[1]
     max_val = 0
     v = np.zeros(n)
+    prubebas = []
 
     for i in range(Np):
         x = np.random.rand(n)
+        duplicado = any(np.allclose(x, prev) for prev in prubebas)
+        if duplicado:
+            while duplicado:
+                x = np.random.rand(n)
+        prubebas.append(x)
         norma_xq = norma(x, q)
         Ax = norma(prodMatV(A, x), p)
         normaInducida = Ax / norma_xq
@@ -454,8 +460,9 @@ def normaMatMC(A, q, p, Np):
         if normaInducida > max_val:
             max_val = normaInducida
             v = x / norma_xq
-
-    return max_val, v
+    print("Norma inducida estimada:", max_val)
+    print("Vector v que la alcanza (normalizado):", v)
+    return [max_val, v]
 
 
 def sumaColumnasOFilas(A, filas):
@@ -531,6 +538,8 @@ def calculaLU(A):
                     U[j][k] - L[j][i] * U[i][k]
                 )  # U[j][k] = U[j][k] - L[j][i] * U[i][k], para todo k >= i
                 ops += 2
+
+        print(ops)
 
     return L, U, ops
 

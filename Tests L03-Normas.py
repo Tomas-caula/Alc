@@ -1,5 +1,5 @@
 # Tests L03-Normas
-from ALC2 import norma, normaliza, normaExacta, normaMatMC, condMC, condExacta
+from ALC2 import norma, normaliza, normaExacta, normaMatMC, condMC, condExacta, prodMatV
 import numpy as np
 
 # Tests norma
@@ -13,7 +13,7 @@ assert norma(np.random.rand(10), 2) >= 0
 
 print("------ÉXITO!!!!\n")
 
-# Tests normaliza
+
 print("TEST NORMALIZA")
 
 # caso borde

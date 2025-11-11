@@ -444,24 +444,18 @@ def normaMatMC(A, q, p, Np):
     n = A.shape[1]
     max_val = 0
     v = np.zeros(n)
-    prubebas = []
 
     for i in range(Np):
         x = np.random.rand(n)
-        duplicado = any(np.allclose(x, prev) for prev in prubebas)
-        if duplicado:
-            while duplicado:
-                x = np.random.rand(n)
-        prubebas.append(x)
-        norma_xq = norma(x, q)
-        Ax = norma(prodMatV(A, x), p)
+        norma_xq = norma(x, p)
+        if norma_xq == 0:
+            continue
+        Ax = norma(prodMatV(A, x), q)
         normaInducida = Ax / norma_xq
 
         if normaInducida > max_val:
             max_val = normaInducida
             v = x / norma_xq
-    print("Norma inducida estimada:", max_val)
-    print("Vector v que la alcanza (normalizado):", v)
     return [max_val, v]
 
 
@@ -497,15 +491,18 @@ def normaExacta(A, p=""):
 
 
 def condMC(A, p):
-    return normaliza(A, p) * normaliza(inversa(A), p)
+    return normaMatMC(A, p, p, 1000)[0] * normaMatMC(inversa(A), p, p, 1000)[0]
 
 
 def condExacta(A, p):
-    norma_A = normaExacta(A, p)[0]
-    norma_A_inv = normaExacta(inversa(A), p)[0]
-    cond = norma_A * norma_A_inv
-
-    return cond
+    if p == "inf":
+        norma_A = normaExacta(A, p)[1]
+        norma_A_inv = normaExacta(inversa(A), p)[1]
+        return norma_A * norma_A_inv
+    else:
+        norma_A = normaExacta(A, p)[0]
+        norma_A_inv = normaExacta(inversa(A), p)[0]
+        return norma_A * norma_A_inv
 
 
 # ----------------------------------------------------------
@@ -538,8 +535,6 @@ def calculaLU(A):
                     U[j][k] - L[j][i] * U[i][k]
                 )  # U[j][k] = U[j][k] - L[j][i] * U[i][k], para todo k >= i
                 ops += 2
-
-        print(ops)
 
     return L, U, ops
 

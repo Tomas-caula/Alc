@@ -491,7 +491,7 @@ def normaExacta(A, p=""):
 
 
 def condMC(A, p):
-    return normaMatMC(A, p, p, 1000)[0] * normaMatMC(inversa(A), p, p, 1000)[0]
+    return normaMatMC(A, p, p, 10000)[0] * normaMatMC(inversa(A), p, p, 10000)[0]
 
 
 def condExacta(A, p):

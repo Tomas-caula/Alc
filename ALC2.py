@@ -879,6 +879,7 @@ def esNucleo(A, S, tol=1e-5):
 
 
 def svd_reducida(A, k="max", tol=1e-15):
+    m, n = A.shape
     AtA = prodMat(traspuesta(A), A)
     V, D = diagRH(AtA, tol=tol, K=1000)
 
@@ -889,25 +890,33 @@ def svd_reducida(A, k="max", tol=1e-15):
         else:
             sigma[i] = 0
 
-    k = 0
-    for i in range(len(sigma)):
-        if sigma[i] > tol:
-            k += 1
+    # pares = [(sigma[i], V[:, i]) for i in range(len(sigma))]
+    # pares_ordenados = sorted(pares, key=lambda x: x[0], reverse=True)
+    # sigma = np.array([p[0] for p in pares_ordenados])
+    # V = np.column_stack([p[1] for p in pares_ordenados])
 
-    SigmaM = np.zeros((k, k))
-    for i in range(k):
-        SigmaM[i][i] = sigma[i]
+    rango_maximo = min(m, n)
+
+    if k == "max":
+        k = min(rango_maximo, np.sum(sigma > tol))
+    else:
+        k = min(int(k), rango_maximo, np.sum(sigma > tol))
 
     V = V[:, :k]
 
+    # Crear matriz diagonal inversa
     inv_SigmaM = np.zeros((k, k))
     for i in range(k):
-        inv_SigmaM[i][i] = 1 / SigmaM[i][i]
+        inv_SigmaM[i][i] = 1 / sigma[i]
 
-    # Armo U
     U = prodMat(A, prodMat(V, inv_SigmaM))
 
-    # Normalizo las columnas de U
+    U = normaliazador(U)
+
+    return U, sigma[:k], V
+
+
+def normaliazador(U):
     m, n = U.shape
     for j in range(n):
         norma = 0
@@ -916,8 +925,7 @@ def svd_reducida(A, k="max", tol=1e-15):
         norma = norma**0.5
         for i in range(m):
             U[i][j] /= norma
-
-    return U, sigma, traspuesta(V)
+    return U
 
 
 # ----------------------------------------------------------

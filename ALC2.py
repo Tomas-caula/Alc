@@ -512,6 +512,9 @@ def condExacta(A, p):
 
 
 def calculaLU(A):
+    if A is None or not esCuadrada(A):
+        return (None, None, 0)
+
     n = A.shape[0]  # Obtener el tamaño de la matriz cuadrada
     U = np.array(
         [[float(A[i][j]) for j in range(n)] for i in range(n)]
@@ -522,7 +525,7 @@ def calculaLU(A):
     for i in range(n):
         # Verificar si el pivote es cero (no se puede dividir)
         if U[i][i] == 0:
-            return None
+            return (None, None, 0)
 
         for j in range(i + 1, n):
             L[j][i] = (
@@ -530,11 +533,13 @@ def calculaLU(A):
             )  # Calcular el factor de escalamiento: L[j][i] = U[j][i] / U[i][i]
             ops += 1
 
-            for k in range(i, n):
+            for k in range(i + 1, n):
                 U[j][k] = (
                     U[j][k] - L[j][i] * U[i][k]
                 )  # U[j][k] = U[j][k] - L[j][i] * U[i][k], para todo k >= i
                 ops += 2
+
+            U[j][i] = 0  # Establecer U[j][i] a cero explicitamente
 
     return L, U, ops
 
@@ -565,6 +570,9 @@ def inversa(A):
     I = identidad(n)
     L, U, _ = calculaLU(A)
 
+    if L is None or U is None:
+        return None
+
     for i in range(n):
         e_i = I[:, i]
         yk = res_tri(L, e_i, inferior=True)
@@ -576,20 +584,35 @@ def inversa(A):
 
 def calculaLDV(A):
     L, U, _ = calculaLU(A)
+    if L is None or U is None:
+        return (None, None, 0)
+    
     Ut = traspuesta(U)
     V, D, _ = calculaLU(Ut)
+    if V is None or D is None:
+        return (None, None, 0)
+    
     V = traspuesta(V)
 
     return L, D, V
 
 
 def esSDP(A, atol=1e-10):
-    _, D, _ = calculaLDV(A)
-
-    if esSimetrica(A, atol=atol) and diagonalPositiva(D):
-        return True
-    else:
+    if not esSimetrica(A, atol=atol):
         return False
+
+    L, D, V = calculaLDV(A)
+    # si no se pudo calcular LDV, no es SDP
+    if D is None:
+        return False
+
+    # comprobar que todas las entradas diagonales sean mayores que atol (pero con esta implementacion no usa la def diagonal)
+    n = D.shape[0]
+    for i in range(n):
+        if D[i][i] <= atol:
+            return False
+
+    return True
 
 
 # ----------------------------------------------------------

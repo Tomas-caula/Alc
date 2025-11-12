@@ -711,14 +711,13 @@ def metpot2k(A, tol=1e-15, K=1000):
         k += 1
 
     lambda_A = producto_escalar(v_tilde, prodMatV(A, v_tilde))
-    error = e - 1
 
-    return v, lambda_A, k, error
+    return v, lambda_A, k
 
 
-def diagRH(A, tol=1e-15, K=1000):
+def diagRH(A, tol=1e-15, K=1e3):
     n = A.shape[0]
-    v1, l1, _, _ = metpot2k(A, tol, K)
+    v1, l1, _ = metpot2k(A, tol, K)
 
     e1 = np.zeros(n)
     e1[0] = 1
@@ -749,7 +748,6 @@ def diagRH(A, tol=1e-15, K=1000):
                 S[i][j] = S_tilde[i - 1][j - 1]
 
         S = prodMat(H, S)
-
     return S, D
 
 
@@ -802,23 +800,24 @@ def transiciones_al_azar_uniformes(n, thres):
 
 def nucleo(A, tol=1e-15):
     ATA = prodMat(traspuesta(A), A)
-    S, D = diagRH(A, tol, K=1000)
+    S, D = diagRH(ATA, tol, K=1000)
 
     autovalores = [D[i][i] for i in range(len(D))]
     indices_nucleo = [i for i, aval in enumerate(autovalores) if abs(aval) <= tol]
 
     if len(indices_nucleo) == 0:
-        return np.zeros((A.shape[1], 0))
+        return np.zeros((0, 0))
 
     nucleo_vectores = traspuesta(np.array([S[:, i] for i in indices_nucleo]))
-
     return nucleo_vectores
 
 
 def crea_rala(listado, m_filas, n_columnas, tol=1e-15):
     elemsNoNulos = {}
-    dim = (m_filas, n_columnas)
 
+    dim = (m_filas, n_columnas)
+    if listado == []:
+        return {}, dim
     for i, j, aij in zip(listado[0], listado[1], listado[2]):
         if abs(aij) >= tol:
             elemsNoNulos[(i, j)] = aij
@@ -827,10 +826,14 @@ def crea_rala(listado, m_filas, n_columnas, tol=1e-15):
 
 
 def multiplica_rala_vector(A, v):
-    w = np.zeros(len(v))
+    elemsNoNulos, dim = A
+    m_filas, n_columnas = dim
 
-    for (i, j), aij in A.items():
+    w = np.zeros(m_filas)
+
+    for (i, j), aij in elemsNoNulos.items():
         w[i] += aij * v[j]
+
     return w
 
 

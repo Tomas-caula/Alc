@@ -339,7 +339,7 @@ def error(x, y):
     return abs(x - y)
 
 
-def errorRelativo(x, y):
+def error_relativo(x, y):
     return error(x, y) / abs(x)
 
 
@@ -375,7 +375,7 @@ def escala(s):
     return M
 
 
-def rota_y_escala(theta, s):
+def rotayescala(theta, s):
     M = np.array(
         [
             [s[0] * np.cos(theta), -s[0] * np.sin(theta)],
@@ -402,8 +402,8 @@ def afin(theta, s, b):
     return A
 
 
-def trans_afin(v, theta, s, b):
-    Tr = prodMatV(rota_y_escala(theta, s), v)
+def transafin(v, theta, s, b):
+    Tr = prodMatV(rotayescala(theta, s), v)
     vr = Tr + b
     return vr
 
@@ -586,12 +586,12 @@ def calculaLDV(A):
     L, U, _ = calculaLU(A)
     if L is None or U is None:
         return (None, None, 0)
-    
+
     Ut = traspuesta(U)
     V, D, _ = calculaLU(Ut)
     if V is None or D is None:
         return (None, None, 0)
-    
+
     V = traspuesta(V)
 
     return L, D, V
@@ -646,7 +646,12 @@ def QR_con_GS(A, tol=1e-12, retorna_nops=False):
             Q[:, j] = Q[:, j] / R[j][j]
             ops += 1
 
-    return Q, R, ops
+        if retorna_nops:
+            return Q, R, ops
+        return (
+            Q,
+            R,
+        )
 
 
 def QR_con_HH(A, tol=1e-12):

@@ -32,4 +32,4 @@ Xt, Yt, Xv, Yv = cargarCarpeta("./cats_and_dogs/")
 
 
 def pinvEcuacionesNormales(X, L, Y):
-    print(calculaCholesky([1, 2, 3], [4, 5, 6], [7, 8, 9]))
+    print * ("Calculando pseudoinversa por ecuaciones normales...")

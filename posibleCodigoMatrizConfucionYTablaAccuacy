@@ -1,0 +1,53 @@
+import numpy as np
+from alc import *
+import pandas as pd
+
+X_train = np.load('X_train.npy')
+y_train = np.load('y_train.npy')
+X_test = np.load('X_test.npy')
+y_test = np.load('y_test.npy')
+
+Xplus_svd = pinvSVD(X_train)
+Xplus_en  = pinvEcuacionesNormales(X_train)
+Xplus_hh  = pinvHouseHolder(X_train)
+Xplus_gs  = pinvGramSchmidt(X_train)
+
+W_svd = y_train @ Xplus_svd
+W_en  = y_train @ Xplus_en
+W_hh  = y_train @ Xplus_hh
+W_gs  = y_train @ Xplus_gs
+
+def predecir(W, X):
+    Y = W @ X.T
+    return np.argmax(Y, axis=0)
+
+pred_svd = predecir(W_svd, X_test)
+pred_en  = predecir(W_en,  X_test)
+pred_hh  = predecir(W_hh,  X_test)
+pred_gs  = predecir(W_gs,  X_test)
+
+def matriz_confusion(y_true, y_pred):
+    M = np.zeros((2,2), dtype=int)
+    for t,p in zip(y_true, y_pred):
+        M[t][p] += 1
+    return M
+
+MC_svd = matriz_confusion(y_test, pred_svd)
+MC_en  = matriz_confusion(y_test, pred_en)
+MC_hh  = matriz_confusion(y_test, pred_hh)
+MC_gs  = matriz_confusion(y_test, pred_gs)
+
+def accuracy(y_true, y_pred):
+    return np.mean(y_true == y_pred)
+
+acc_svd = accuracy(y_test, pred_svd)
+acc_en  = accuracy(y_test, pred_en)
+acc_hh  = accuracy(y_test, pred_hh)
+acc_gs  = accuracy(y_test, pred_gs)
+
+datos = {
+    'Método': ['SVD','EN','HH','GS'],
+    'Exactitud': [acc_svd, acc_en, acc_hh, acc_gs]
+}
+tabla = pd.DataFrame(datos)
+tabla

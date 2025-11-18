@@ -56,10 +56,8 @@ def traspuesta(A):
     f, c = A.shape
     At = np.zeros((c, f))
 
-    for i in range(f):
-        for j in range(c):
-            At[j][i] = A[i][j]
-
+    for j in range(c):
+        At[j] = A[:, j]
     return At
 
 def esSimetrica(A, atol=1e-10):
@@ -220,35 +218,39 @@ def row_echelon_mod(A):
 def vectorT(v):
     return [[x] for x in v]
 
-def prodVectorial(v, w):
+def prodVectorial(u, v):
+    m = u.shape[0]
     n = v.shape[0]
-    M = np.zeros((n, n))
-
-    for i in range(n):
+    M = np.zeros((m, n))
+    for i in range(m):
+        ui = u[i]
         for j in range(n):
-            M[i][j] = v[i] * w[j]
-
+            M[i][j] = ui * v[j]
     return M
 
 def prodMat(A, B):
     m = A.shape[0]
+    n = A.shape[1]
     p = B.shape[1]
+    
     M = np.zeros((m, p))
 
     for i in range(m):
+        Ai = A[i]       
         for j in range(p):
-            M[i][j] = producto_escalar(A[i, :], B[:, j])
+            s = 0.0
+            Bj = B[:, j] 
+            for k in range(n):
+                s += Ai[k] * Bj[k]
+            M[i][j] = s
+
     return M
 
 def prodMatV(A, v):
-    m, _ = A.shape
-    w = np.zeros(m)
-    for i in range(m):
-        w[i] = producto_escalar(A[i, :], v)
-    return w
+    return (A * v).sum(axis=1)
 
 def producto_escalar(v, w):
-    return sum(v[i] * w[i] for i in range(len(v)))
+    return (v * w).sum()
 
 def identidad(n):
     I = np.zeros((n, n))
@@ -271,20 +273,28 @@ def diagonalPositiva(A):
             return False
     return True
 
-def calculaCholesky(A, atol=1e-10):
+def calculaCholesky(A):
+    n = A.shape[0]
+    L = np.zeros((n, n))
 
-    if esSDP(A, atol=atol):
-        L, D, _ = calculaLDV(A)
-        n = D.shape[0]
-        Dsqrt = np.zeros((n, n))
+    for i in range(n):
 
-        for i in range(n):
-            Dsqrt[i][i] = D[i][i] ** (1 / 2)
+        # Diagonal
+        s = 0.0
+        for k in range(i):
+            s += L[i][k] * L[i][k]
 
-        C = prodMat(L, Dsqrt)
-        return C, traspuesta(C)
-    else:
-        raise ValueError("La matriz no es simétrica definida positiva")
+        diag = A[i][i] - s
+        L[i][i] = diag ** 0.5
+
+        # Parte inferior
+        for j in range(i+1, n):
+            s = 0.0
+            for k in range(i):
+                s += L[j][k] * L[i][k]
+            L[j][i] = (A[j][i] - s) / L[i][i]
+
+    return L
 
 def f_A(A, v):
     Av = prodMatV(A, v)
@@ -293,6 +303,18 @@ def f_A(A, v):
         return Av / nrm
     else:
         return Av
+
+def res_tri_multiple(L, B, inferior=True):
+    n, p = B.shape
+    X = np.zeros((n, p))
+
+    for i in range(n):
+        s = B[i].copy()
+        for j in range(i):
+            s -= L[i, j] * X[j]
+        X[i] = s / L[i, i]
+
+    return X
 
 
 # ----------------------------------------------------------
@@ -463,53 +485,67 @@ def condExacta(A, p):
 # LABO 04
 
 def calculaLU(A):
-    if A is None or not esCuadrada(A):
-        return (None, None, 0)
+    if A is None:
+        return None, None, 0
 
-    n = A.shape[0]  # Obtener el tamaño de la matriz cuadrada
-    U = np.array(
-        [[float(A[i][j]) for j in range(n)] for i in range(n)]
-    )  # Inicializar U como una copia de la matriz A
-    L = identidad(n).astype(float)  # Inicializar L como una matriz identidad
+    n = A.shape[0]
+    U = np.zeros((n, n))
+    L = np.zeros((n, n))
+
+    # Inicializamos U = A, y L con 1s en la diagonal
+    for i in range(n):
+        Li = L[i]
+        Ui = U[i]
+        Li[i] = 1.0
+        Ai = A[i]
+        for j in range(n):
+            Ui[j] = Ai[j]
+
     ops = 0
 
+    # Eliminación
     for i in range(n):
-        # Verificar si el pivote es cero (no se puede dividir)
-        if U[i][i] == 0:
-            return (None, None, 0)
+        pivote = U[i][i]
+        if pivote == 0:
+            return None, None, 0
 
+        Ui = U[i] 
         for j in range(i + 1, n):
-            L[j][i] = (
-                U[j][i] / U[i][i]
-            )  # Calcular el factor de escalamiento: L[j][i] = U[j][i] / U[i][i]
+            Uj = U[j]       
+            Lji = Uj[i] / pivote
+            L[j][i] = Lji
             ops += 1
 
+            # actualizar la fila U[j][k]
             for k in range(i + 1, n):
-                U[j][k] = (
-                    U[j][k] - L[j][i] * U[i][k]
-                )  # U[j][k] = U[j][k] - L[j][i] * U[i][k], para todo k >= i
+                Uj[k] -= Lji * Ui[k]
                 ops += 2
 
-            U[j][i] = 0  # Establecer U[j][i] a cero explicitamente
+            Uj[i] = 0.0
 
     return L, U, ops
 
 def res_tri(L, b, inferior=True):
-    n = np.shape(L)[0]
+    n, m = L.shape
     x = np.zeros(n)
 
+    # Resolvemos triangular inferior (forward substitution)
     if inferior:
         for i in range(n):
-            suma = 0
+            s = 0.0
+            row = L[i]
             for j in range(i):
-                suma += L[i][j] * x[j]
-            x[i] = (b[i] - suma) / L[i][i]
+                s += row[j] * x[j]
+            x[i] = (b[i] - s) / row[i]
+
+    # Resolvemos triangular superior (backward substitution)
     else:
         for i in range(n - 1, -1, -1):
-            suma = 0
+            s = 0.0
+            row = L[i]
             for j in range(i + 1, n):
-                suma += L[i][j] * x[j]
-            x[i] = (b[i] - suma) / L[i][i]
+                s += row[j] * x[j]
+            x[i] = (b[i] - s) / row[i]
 
     return x
 
@@ -568,61 +604,81 @@ def esSDP(A, atol=1e-10):
 # LABO 05
 
 def QR_con_GS(A, tol=1e-12, retorna_nops=False):
-    if A.shape[0] != A.shape[1]:
+    m = A.shape[0]
+    n = A.shape[1]
+    if m < n:
         return None
-    else:
-        n = A.shape[0]
-        Q = np.zeros((n, n))
-        R = np.zeros((n, n))
-        ops = 0
 
-        Q[:, 0] = A[:, 0] / norma(A[:, 0], 2)
-        R[0][0] = norma(A[:, 0], 2)
+    Q = np.zeros((m, n))
+    R = np.zeros((n, n))
+    ops = 0
 
-        for j in range(1, n):
-            Q[:, j] = A[:, j]
-            ops += 1
+    R[0][0] = norma(A[:, 0], 2)
+    Q[:, 0] = A[:, 0] / R[0][0]
 
-            for k in range(j):
-                R[k][j] = producto_escalar(Q[:, k], Q[:, j])
-                Q[:, j] = Q[:, j] - R[k][j] * Q[:, k]
-                ops += 3
+    for j in range(1, n):
+        Q[:, j] = A[:, j]    
+        ops += 1
 
-            R[j][j] = norma(Q[:, j], 2)
-            Q[:, j] = Q[:, j] / R[j][j]
-            ops += 1
+        for k in range(j):
+            R[k][j] = producto_escalar(Q[:, k], Q[:, j])
+            Q[:, j] = Q[:, j] - R[k][j] * Q[:, k]
+            ops += 3
 
-        if retorna_nops:
-            return Q, R, ops
-        return (
-            Q,
-            R,
-        )
+        R[j][j] = norma(Q[:, j], 2)
+
+        if R[j][j] < tol:
+            return None
+
+        Q[:, j] = Q[:, j] / R[j][j]
+        ops += 1
+
+    if retorna_nops:
+        return Q, R, ops
+    return Q, R
 
 def QR_con_HH(A, tol=1e-12):
-    if A.shape[0] < A.shape[1]:
-        return None
-    else:
-        m = A.shape[0]
-        n = A.shape[1]
-        R = A.copy()
-        Q = identidad(m)
+    m, n = A.shape
+    R = A.copy()
+    Q = identidad(m)
 
-        for k in range(n):
-            x = R[k:m, k]
-            alpha = -sign(x[0]) * norma(x, 2)
-            e = np.zeros(m - k)
-            e[0] = 1
-            u = x - alpha * e
+    for k in range(n):
+        x = R[k:, k]
 
-            if norma(u, 2) > tol:
-                u = u / norma(u, 2)
-                Hk = identidad(m - k) - 2 * prodVectorial(u, u)
-                H = identidad(m).astype(float)
-                H[k:, k:] = Hk
+        maxval = np.max(np.abs(x))
+        if maxval == 0:
+            continue
 
-                R = prodMat(H, R)
-                Q = prodMat(Q, traspuesta(H))
+        s = 0.0
+        for xi in x:
+            s += (xi/maxval)**2
+        nx = maxval * (s**0.5)
+
+        alpha = - (1 if x[0] >= 0 else -1) * nx
+        u = x.copy()
+        u[0] -= alpha
+
+        maxval = np.max(np.abs(u))
+        if maxval < tol:
+            continue
+
+        s = 0.0
+        for ui in u:
+            s += (ui/maxval)**2
+        nu = maxval * (s**0.5)
+        u = u / nu
+
+        for j in range(k, n):
+            col = R[k:, j]
+
+            dot = producto_escalar(u, col)
+            col -= 2 * dot * u
+
+        for i in range(m):
+            fila = Q[i, k:]
+
+            dot = producto_escalar(fila, u)
+            fila -= 2 * dot * u
 
     return Q, R
 
@@ -640,7 +696,7 @@ def calculaQR(A, metodo="RH", tol=1e-12):
 
 # LABO 06
 
-def metpot2k(A, tol=1e-15, K=1000):
+def metpot2k(A, tol=1e-15, K=50):
     n = A.shape[0]
     v = np.random.rand(n)
     v_tilde = f_A(A, f_A(A, v))
@@ -657,7 +713,7 @@ def metpot2k(A, tol=1e-15, K=1000):
 
     return v, lambda_A, k
 
-def diagRH(A, tol=1e-15, K=1e3):
+def diagRH(A, tol=1e-15, K=50):
     n = A.shape[0]
     v1, l1, _ = metpot2k(A, tol, K)
 
@@ -811,42 +867,69 @@ def esNucleo(A, S, tol=1e-5):
 
 # LABO 08
 
+
 def svd_reducida(A, k="max", tol=1e-15):
     m, n = A.shape
-    AtA = prodMat(traspuesta(A), A)
-    V, D = diagRH(AtA, tol=tol, K=1000)
+    k_max = min(m, n)
+    max_iter_inner = 10
+    A_work = A.copy()
 
-    sigma = np.zeros(D.shape[0])
-    for i in range(D.shape[0]):
-        if D[i][i] > tol:
-            sigma[i] = D[i][i] ** 0.5
-        else:
-            sigma[i] = 0
+    U_all = np.zeros((m, k_max))
+    V_all = np.zeros((n, k_max))
+    S_all = np.zeros(k_max)
 
-    # pares = [(sigma[i], V[:, i]) for i in range(len(sigma))]
-    # pares_ordenados = sorted(pares, key=lambda x: x[0], reverse=True)
-    # sigma = np.array([p[0] for p in pares_ordenados])
-    # V = np.column_stack([p[1] for p in pares_ordenados])
+    found = 0
+    for j in range(k_max):
+        v = np.random.rand(n)
 
-    rango_maximo = min(m, n)
+        # iteraciones alternadas: u <- A v, v <- A^T u
+        for _ in range(max_iter_inner):
+            Av = A_work @ v
+            nrm_av = norma(Av, 2)
+            if nrm_av == 0:
+                break
+            u = Av / nrm_av
+
+            ATu = traspuesta(A_work) @ u
+            nrm_atu = norma(ATu, 2)
+            if nrm_atu == 0:
+                break
+            v = ATu / nrm_atu
+
+        # calcular sigma y vector u final
+        Av_final = A_work @ v
+        sigma = norma(Av_final, 2)
+
+        # si sigma es muy pequeña -> termina
+        if sigma <= tol:
+            break
+
+        # calculamos las columnas singulares aproximadas
+        u_col = Av_final / sigma
+        U_all[:, j] = u_col
+        V_all[:, j] = v
+        S_all[j] = sigma
+        found += 1
+
+        outer = u_col.reshape(m, 1) * v.reshape(1, n)
+        A_work = A_work - outer * sigma
+
+    if found == 0:
+        return np.zeros((m, 0)), np.zeros((0,)), np.zeros((n, 0))
 
     if k == "max":
-        k = min(rango_maximo, np.sum(sigma > tol))
+        k_out = found
     else:
-        k = min(int(k), rango_maximo, np.sum(sigma > tol))
+        k_req = int(k)
+        k_out = min(k_req, found, k_max)
 
-    V = V[:, :k]
-
-    # Crear matriz diagonal inversa
-    inv_SigmaM = np.zeros((k, k))
-    for i in range(k):
-        inv_SigmaM[i][i] = 1 / sigma[i]
-
-    U = prodMat(A, prodMat(V, inv_SigmaM))
+    U = U_all[:, :k_out]
+    sigma = S_all[:k_out]
+    V = V_all[:, :k_out]
 
     U = normaliazador(U)
 
-    return U, sigma[:k], V
+    return U, sigma, V
 
 def normaliazador(U):
     m, n = U.shape
@@ -922,61 +1005,74 @@ def cargarDataset(carpeta):
 
     return Xt, Yt, Xv, Yv
 
-def pinvEcuacionesNormales(X, Y):
-    n, p = X.shape
+def pinvEcuacionesNormales(L, Y, XT):
+    """
+    L : matriz de Cholesky tal que (X X^T) = L L^T      (n x n)
+    Y : targets (m x p)
+    XT: X^T (p x n)
+    
+    Devuelve:
+        W = Y X^T (X X^T)^{-1}
+    """
+    m, p = Y.shape
+    n, _ = L.shape
+    
+    # 1) Hacemos Y * X^T   →   (m × n)
+    YXT = np.zeros((m, n))
+    
+    for i in range(m):
+        for j in range(n):
+            s = 0.0
+            Yi = Y[i]
+            XTj = XT[:, j]
+            for k in range(p):
+                s += Yi[k] * XTj[k]
+            YXT[i][j] = s
 
-    if p < n:
-        Xt = traspuesta(X)
-        XTX = prodMat(Xt, X)
+    # 2) Resolver L Z = YXT
+    Z = np.zeros((m, n))
+    for i in range(m):
+        Z[i] = res_tri(L, YXT[i], inferior=True)
 
-        L, Lt = calculaCholesky(XTX)
+    # 3) Resolver L^T W = Z
+    W = np.zeros((m, n))
+    for i in range(m):
+        W[i] = res_tri(L, Z[i], inferior=False)
 
-        Z = np.zeros_like(Xt)
-        for i in range(Xt.shape[1]):
-            Z[:, i] = res_tri(L, Xt[:, i], inferior=True)
-
-        U = np.zeros_like(Xt)
-        for i in range(Z.shape[1]):
-            U[:, i] = res_tri(Lt, Z[:, i], inferior=False)
-
-        W = prodMat(Y, U)
-        return W
-
-    elif n < p:
-        Xt = traspuesta(X)
-        XXT = prodMat(X, Xt)
-
-        L, Lt = calculaCholesky(XXT)
-
-        Z = np.zeros_like(Xt)
-        for i in range(Xt.shape[1]):
-            Z[:, i] = res_tri(L, Xt[:, i], inferior=True)
-                              
-        V = np.zeros_like(Xt)
-        for i in range(Z.shape[1]):
-            V[:, i] = res_tri(Lt, Z[:, i], inferior=False)
-
-        W = prodMat(Y, V)
-        return W
-
-    else:
-        Xinv = inversa(X)
-        W = prodMat(Y, Xinv)
-        return W
-
-def pinvSVD(U, S, V, Y):
-    pX = prodMat(V, prodMat(inversa(S), traspuesta(U)))
-    W = prodMat(Y, pX)
     return W
 
+def pinvSVD(U, S, V, Y, tol=1e-12):
+    k = len(S)
+
+    Sp = np.zeros((k, k))
+    for i in range(k):
+        if abs(S[i]) > tol:
+            Sp[i][i] = 1.0 / S[i]
+        else:
+            Sp[i][i] = 0.0
+
+    Xp = V @ Sp @ traspuesta(U)
+    return Y @ Xp
+
 def pinvHouseHolder(Q, R, Y):
-    pX = prodMat(Q, inversa(traspuesta(R)))
-    W = prodMat(Y, pX)
+    n = R.shape[1]
+    Qhat = Q[:, :n]      
+    Rhat = R[:n, :n]     
+    L = Rhat.T        
+    B = Qhat.T        
+
+    # Resolver L X = B
+    Vt = res_tri_multiple(L, B, inferior=True) 
+
+    V = Vt.T  
+    W = Y @ V
+
     return W
 
 def pinvGramSchmidt(Q, R, Y):
-    pX = prodMat(Q, inversa(traspuesta(R)))
-    W = prodMat(Y, pX)
+    Rt_inv = np.linalg.inv(R.T)
+    Xp = Q @ Rt_inv
+    W = Y @ Xp
     return W
 
 def esPseudoInversa(X, Xp, tol=1e-6):
@@ -990,3 +1086,46 @@ def esPseudoInversa(X, Xp, tol=1e-6):
     c4 = np.allclose(B, traspuesta(B), atol=tol)      
 
     return c1 and c2 and c3 and c4
+
+def argmax_axis0(M):
+    n_rows = M.shape[0]
+    n_cols = M.shape[1]
+    out = np.zeros(n_cols, dtype=int)
+
+    for j in range(n_cols):
+        max_val = M[0][j]
+        max_idx = 0
+        for i in range(1, n_rows):
+            vij = M[i][j]
+            if vij > max_val:
+                max_val = vij
+                max_idx = i
+        out[j] = max_idx
+
+    return out
+
+def confusion_matrix(true, pred, num_classes=2):
+    # Matriz de confusión
+    M = np.zeros((num_classes, num_classes), dtype=int)
+
+    correct = 0
+    total = 0
+
+    for t, p in zip(true, pred):
+        M[t, p] += 1
+        if t == p:
+            correct += 1
+        total += 1
+
+    accuracy = correct / total if total > 0 else 0.0
+
+    # Cálculo de precision por clase
+    precision = np.zeros(num_classes, dtype=float)
+
+    for c in range(num_classes):
+        TP = M[c, c]
+        FP = sum(M[i, c] for i in range(num_classes) if i != c)
+        denom = TP + FP
+        precision[c] = TP / denom if denom > 0 else 0.0
+
+    return M, accuracy, precision

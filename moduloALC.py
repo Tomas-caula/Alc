@@ -955,17 +955,13 @@ def normaliazador(U):
 # FUNCIONES SOLICITADAS
 
 def cargarDataset(carpeta):
-    """
-    Cargamos los embeddings preprocesados del dataset cats_and_dogs.
 
-    Parámetros:
-    carpeta : str
-        Ruta a la carpeta principal del dataset
-
-    Retorna:
-    Xt, Yt, Xv, Yv : np.ndarray
-        Matrices de embeddings y etiquetas
-    """
+    # Cargamos los embeddings preprocesados del dataset dado.
+    # Parámetros: carpeta : str.  Ruta a la carpeta principal del dataset
+    # Retorna: Xt, Yt, Xv, Yv. 
+    # Xt Matriz de embedings para training 
+    # Yt Matriz sincronizado con Yt reflejando que es cada imagen
+    # Xv, Yv es lo mismo que antes solo que los casos de prueba  
 
     # Entrenamiento
     X_cats_train = np.load(
@@ -1012,14 +1008,14 @@ def cargarDataset(carpeta):
     return Xt, Yt, Xv, Yv
 
 def pinvEcuacionesNormales(L, Y, XT):
-    """
-    L : matriz de Cholesky tal que (X X^T) = L L^T      (n x n)
-    Y : targets (m x p)
-    XT: X^T (p x n)
+
+    # L : matriz de Cholesky tal que (X X^T) = L L^T      (n x n)
+    # Y : targets (m x p)
+    # XT: X^T (p x n)
     
-    Devuelve:
-        W = Y X^T (X X^T)^{-1}
-    """
+    # Devuelve:
+    # W = Y X^T (X X^T)^{-1}
+    
     m, p = Y.shape
     n, _ = L.shape
     
@@ -1048,6 +1044,13 @@ def pinvEcuacionesNormales(L, Y, XT):
     return W
 
 def pinvSVD(U, S, V, Y, tol=1e-12):
+    
+    #U: Matriz unitaria 
+    #S: Matriz diagonal σ_1 > σ_2 > ... σ_k > 0
+    #V: Matriz con columnas / BON con v autovales de A 
+    #Y Valores esperados
+
+
     k = len(S)
 
     Sp = np.zeros((k, k))
@@ -1061,6 +1064,10 @@ def pinvSVD(U, S, V, Y, tol=1e-12):
     return Y @ Xp
 
 def pinvHouseHolder(Q, R, Y):
+
+    #Y Valores esperados
+    #Q  matriz ortogonal
+    #R matriz triangular superior
     n = R.shape[1]
     Qhat = Q[:, :n]      
     Rhat = R[:n, :n]     
@@ -1076,6 +1083,9 @@ def pinvHouseHolder(Q, R, Y):
     return W
 
 def pinvGramSchmidt(Q, R, Y):
+     #Y Valores esperados
+    #Q  matriz ortogonal
+    #R matriz triangular superior
     Rt_inv = np.linalg.inv(R.T)
     Xp = Q @ Rt_inv
     W = Y @ Xp

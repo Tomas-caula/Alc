@@ -871,61 +871,67 @@ def esNucleo(A, S, tol=1e-5):
 def svd_reducida(A, k="max", tol=1e-15):
     m, n = A.shape
     k_max = min(m, n)
-    max_iter_inner = 10
-    A_work = A.copy()
+    max_iter_interna = 10
+    A_trabajo = A.copy()
 
-    U_all = np.zeros((m, k_max))
-    V_all = np.zeros((n, k_max))
-    S_all = np.zeros(k_max)
+    U_todas = np.zeros((m, k_max))
+    V_todas = np.zeros((n, k_max))
+    S_todas = np.zeros(k_max)
 
-    found = 0
+    encontrados = 0
+
+    #Queremos sacar los autovalores y autovectores asociados a (A^t)A
+    #hacemos el metodo de la potencia
     for j in range(k_max):
+
+        #nosotros tenemos que dado un vector NO NULO v^(0) la sucesion te pasos v^(k) = Av^(k-1)/np.linalg.norm(Av, 2)
+        #converge a v^(k) a ser autovalor de A
         v = np.random.rand(n)
 
-        # iteraciones alternadas: u <- A v, v <- A^T u
-        for _ in range(max_iter_inner):
-            Av = A_work @ v
-            nrm_av = norma(Av, 2)
-            if nrm_av == 0:
+        for _ in range(max_iter_interna):
+            Av = A_trabajo @ v
+            norma_av = norma(Av, 2)
+            if norma_av == 0:
                 break
-            u = Av / nrm_av
-
-            ATu = traspuesta(A_work) @ u
-            nrm_atu = norma(ATu, 2)
-            if nrm_atu == 0:
+            u = Av / norma_av
+            #Lo remplazo e itero sobre el A^t  => converge a lambda de (A^t)A
+            ATu = traspuesta(A_trabajo) @ u
+            norma_atu = norma(ATu, 2)
+            if norma_atu == 0:
                 break
-            v = ATu / nrm_atu
+            v = ATu / norma_atu
 
         # calcular sigma y vector u final
-        Av_final = A_work @ v
+        Av_final = A_trabajo @ v
         sigma = norma(Av_final, 2)
 
-        # si sigma es muy pequeña -> termina
         if sigma <= tol:
             break
 
-        # calculamos las columnas singulares aproximadas
+        #Por ejercicio Ejercico 14 puedo eliminar el mayor
         u_col = Av_final / sigma
-        U_all[:, j] = u_col
-        V_all[:, j] = v
-        S_all[j] = sigma
-        found += 1
+        U_todas[:, j] = u_col
+        V_todas[:, j] = v
+        S_todas[j] = sigma
+        encontrados += 1
 
-        outer = u_col.reshape(m, 1) * v.reshape(1, n)
-        A_work = A_work - outer * sigma
+        exterior = u_col.reshape(m, 1) * v.reshape(1, n)
+        A_trabajo = A_trabajo - exterior * sigma
 
-    if found == 0:
+
+
+    if encontrados == 0:
         return np.zeros((m, 0)), np.zeros((0,)), np.zeros((n, 0))
 
     if k == "max":
-        k_out = found
+        k_salida = encontrados
     else:
-        k_req = int(k)
-        k_out = min(k_req, found, k_max)
+        k_requerido = int(k)
+        k_salida = min(k_requerido, encontrados, k_max)
 
-    U = U_all[:, :k_out]
-    sigma = S_all[:k_out]
-    V = V_all[:, :k_out]
+    U = U_todas[:, :k_salida]
+    sigma = S_todas[:k_salida]
+    V = V_todas[:, :k_salida]
 
     U = normaliazador(U)
 
